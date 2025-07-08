@@ -212,6 +212,8 @@ open class CropViewController: UIViewController {
             }
 
             if let img = pendingImage {
+                print("Will update cropView with image")
+                   print("cropView is:", cropView as Any)
                 cropView.update(img)
                 pendingImage = nil
             }
