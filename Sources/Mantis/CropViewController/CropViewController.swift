@@ -180,9 +180,7 @@ open class CropViewController: UIViewController {
             createRatioSelector()
         }
       
-        if let img = pendingImage {
-                cropView.update(img)
-            }
+       
         initLayout()
         updateLayout()
         showImageAutoAdjustStatusIfNeeded()
@@ -199,11 +197,12 @@ open class CropViewController: UIViewController {
     
     override public func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+
         if initialLayout == false {
             initialLayout = true
             view.layoutIfNeeded()
             cropView.resetComponents()
-            
+
             cropView.processPresetTransformation { [weak self] transformation in
                 guard let self = self else { return }
                 if case .alwaysUsingOnePresetFixedRatio(let ratio) = self.config.presetFixedRatioType {
@@ -211,8 +210,14 @@ open class CropViewController: UIViewController {
                     self.cropView.handlePresetFixedRatio(ratio, transformation: transformation)
                 }
             }
+
+            if let img = pendingImage {
+                cropView.update(img)
+                pendingImage = nil
+            }
         }
     }
+
     
     public override var prefersStatusBarHidden: Bool {
         return true
