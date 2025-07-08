@@ -159,22 +159,30 @@ open class CropViewController: UIViewController {
     override open func viewDidLoad() {
         super.viewDidLoad()
 
-#if targetEnvironment(macCatalyst)
+    #if targetEnvironment(macCatalyst)
         modalPresentationStyle = .fullScreen
         navigationController?.modalPresentationStyle = .fullScreen
-#endif
+    #endif
+
         view.backgroundColor = .black
-        
+
         cropView.initialSetup(delegate: self, presetFixedRatioType: config.presetFixedRatioType)
+
+        // custom toolbar
+        cropToolbar = getCropToolbar()
+
         createCropToolbar()
+
         if config.cropToolbarConfig.ratioCandidatesShowType == .alwaysShowRatioList
             && config.cropToolbarConfig.includeFixedRatiosSettingButton {
             createRatioSelector()
         }
+
         initLayout()
         updateLayout()
         showImageAutoAdjustStatusIfNeeded()
     }
+
     
     func showImageAutoAdjustStatusIfNeeded() {
         if let imageAdjustHelper = imageAdjustHelper {
@@ -246,7 +254,7 @@ open class CropViewController: UIViewController {
         }
     }    
     
-    private func setFixedRatio(_ ratio: Double, zoom: Bool = true) {
+    public func setFixedRatio(_ ratio: Double, zoom: Bool = true) {
         cropToolbar.handleFixedRatioSetted(ratio: ratio)
         cropView.setFixedRatio(ratio, zoom: zoom, presetFixedRatioType: config.presetFixedRatioType)
     }
@@ -699,5 +707,9 @@ extension CropViewController: TransformDelegate {
     
     func updateCropState(_ cropState: CropState) {
         handleTransform(with: cropState)
+    }
+    
+    func getCropToolbar() -> CropToolbarProtocol {
+        return MyCustomToolbar() // custom subclass
     }
 }
