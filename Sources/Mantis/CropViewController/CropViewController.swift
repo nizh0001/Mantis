@@ -50,6 +50,8 @@ open class CropViewController: UIViewController {
     private var cropStackView: UIStackView!
     private var initialLayout = false
     private var disableRotation = false
+    public var pendingImage: UIImage?
+
     
     private lazy var _undoManager: UndoManager = {
         return UndoManager()
@@ -177,7 +179,10 @@ open class CropViewController: UIViewController {
             && config.cropToolbarConfig.includeFixedRatiosSettingButton {
             createRatioSelector()
         }
-
+      
+        if let img = pendingImage {
+                cropView.update(img)
+            }
         initLayout()
         updateLayout()
         showImageAutoAdjustStatusIfNeeded()
