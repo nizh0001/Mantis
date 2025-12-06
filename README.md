@@ -41,7 +41,7 @@
     <summary><strong>CocoaPods</strong></summary>
 
 ```ruby
-pod 'Mantis', '~> 2.26.0'
+pod 'Mantis', '~> 2.28.0'
 ```
 </details>
 
@@ -57,7 +57,7 @@ github "guoyingtao/Mantis"
  <summary><strong>Swift Packages</strong></summary>
 
 * Repository: https://github.com/guoyingtao/Mantis.git
-* Rules: Version - Exact - 2.26.0
+* Rules: Version - Exact - 2.28.0
 
 </details>
 
@@ -97,6 +97,14 @@ struct MyView: View {
     }
 }
 ```
+
+> **Note:**  
+> - To start a crop operation programmatically, use the existing `action` binding(for `ImageCropperView`):  
+>   ```swift
+>   action = .crop
+>   ```
+> - To receive the result of the crop (success or failure), use the new `onCropCompleted` callback.  
+>   This is especially useful because cropping may not complete instantly in all cases, so relying on this callback ensures you update your UI only after the operation finishes.
 
 * The caller needs to conform CropViewControllerDelegate
 ```swift
@@ -304,6 +312,8 @@ let cropViewController: CustomViewController = Mantis.cropViewController(image: 
 Mantis provide two demo projects
 - MantisExample (using Storyboard)
 - MantisSwiftUIExample (using SwiftUI)
+  - Mantis provides an **out-of-the-box SwiftUI wrapper** named `ImageCropperView`,  
+making it easy to integrate the image cropping interface directly in SwiftUI apps.
 
 ### Showcases
 

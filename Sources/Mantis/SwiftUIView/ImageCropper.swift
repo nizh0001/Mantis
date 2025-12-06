@@ -1,4 +1,3 @@
-//
 //  ImageCropper.swift
 //  Mantis
 //
@@ -11,14 +10,20 @@ import SwiftUI
 
 @available(iOS 13.0, *)
 public enum CropAction {
-//    case reset
-//    case rotateLeft
-//    case rotateRight
+    case reset
+    case rotateLeft
+    case rotateRight
     case crop
-//    case undo
-//    case setAspectRatio(CGFloat)
+    case undo
+    case redo
+    //    case setAspectRatio(CGFloat)
 }
 
+@available(iOS 13.0, *)
+public enum CropStatus {
+    case succeeded
+    case failed
+}
 @available(iOS 13.0, *)
 /// A SwiftUI view that wraps the Mantis image cropping functionality.
 ///
@@ -40,7 +45,7 @@ public enum CropAction {
 ///         cropInfo: $cropInfo
 ///     )
 /// }
-/// `
+/// ```
 /// This view handles the `cropViewControllerDidCrop` and `cropViewControllerDidCancel` delegate methods
 /// of `Mantis.CropViewController`. These methods are implemented by default in the `Coordinator`.
 ///
@@ -48,6 +53,7 @@ public enum CropAction {
 /// `cropViewControllerDidImageTransformed`, etc.), you will need to implement your own `UIViewControllerRepresentable`
 /// and `Coordinator` to manage those delegate methods.
 ///
+
 public struct ImageCropperView: UIViewControllerRepresentable {
     let config: Mantis.Config
     
@@ -57,6 +63,7 @@ public struct ImageCropperView: UIViewControllerRepresentable {
     @Binding var action: CropAction?
     
     let onDismiss: () -> Void
+    let onCropCompleted: (_ status: CropStatus) -> Void
     
     /// Creates an `ImageCropper` view with optional custom configuration and required image bindings.
     ///
@@ -70,13 +77,15 @@ public struct ImageCropperView: UIViewControllerRepresentable {
                 transformation: Binding<Transformation?>,
                 cropInfo: Binding<CropInfo?>,
                 action: Binding<CropAction?> = .constant(nil),
-                onDismiss: @escaping () -> Void = {}) {
+                onDismiss: @escaping () -> Void = {},
+                onCropCompleted: @escaping (_ status: CropStatus) -> Void = { _  in}) {
         self.config = config
-        self._image = image
-        self._transformation = transformation
-        self._cropInfo = cropInfo
-        self._action = action
+        _image = image
+        _transformation = transformation
+        _cropInfo = cropInfo
+        _action = action
         self.onDismiss = onDismiss
+        self.onCropCompleted = onCropCompleted
     }
     
     public class Coordinator: CropViewControllerDelegate {
@@ -90,31 +99,41 @@ public struct ImageCropperView: UIViewControllerRepresentable {
         
         init(_ parent: ImageCropperView) {
             self.parent = parent
-            self.actionBinding = parent._action
+            actionBinding = parent._action
         }
         
+        @MainActor
         public func cropViewControllerDidCrop(_ cropViewController: Mantis.CropViewController, cropped: UIImage, transformation: Transformation, cropInfo: CropInfo) {
-            isProcessingAction = true
-            
             parent.image = cropped
             parent.transformation = transformation
             parent.cropInfo = cropInfo
             
-            DispatchQueue.main.async {
-                self.isProcessingAction = false
-                self.parent.onDismiss()
-            }
+            isProcessingAction = false
+            lastProcessedAction = nil
+
+            parent.onDismiss()
+            parent.onCropCompleted(.succeeded)
         }
         
+        @MainActor
         public func cropViewControllerDidCancel(_ cropViewController: Mantis.CropViewController, original: UIImage) {
             parent.onDismiss()
         }
         
+        @MainActor
+        public func cropViewControllerDidFailToCrop(_ cropViewController: Mantis.CropViewController, original: UIImage) {
+            isProcessingAction = false
+            lastProcessedAction = nil
+            parent.onDismiss()
+            parent.onCropCompleted(.failed)
+        }
+        
+        @MainActor
         func handleAction() {
             guard !isProcessingAction else { return }
             
             guard let cropVC = cropViewController else { return }
-                        
+            
             guard let currentAction = actionBinding.wrappedValue else { return }
             
             if let lastAction = lastProcessedAction, areActionsEqual(lastAction, currentAction) {
@@ -127,19 +146,24 @@ public struct ImageCropperView: UIViewControllerRepresentable {
             switch currentAction {
             case .crop:
                 cropVC.crop()
-                DispatchQueue.main.async {
-                    self.isProcessingAction = false
-                }
-            default:
-                DispatchQueue.main.async {
-                    self.isProcessingAction = false
-                    self.lastProcessedAction = nil
-                }
+                actionBinding.wrappedValue = nil
+                // Let delegate callbacks handle state cleanup for `.crop`.
+                return
+            case .reset:
+                cropVC.didSelectReset()
+            case .rotateLeft:
+                cropVC.didSelectCounterClockwiseRotate()
+            case .rotateRight:
+                cropVC.didSelectClockwiseRotate()
+            case .undo:
+                cropVC.didSelectUndo()
+            case .redo:
+                cropVC.didSelectRedo()
             }
             
-            DispatchQueue.main.async {
-                self.actionBinding.wrappedValue = nil
-            }
+            isProcessingAction = false
+            lastProcessedAction = nil
+            actionBinding.wrappedValue = nil
         }
         
         private func areActionsEqual(_ lhs: CropAction, _ rhs: CropAction) -> Bool {
@@ -152,8 +176,8 @@ public struct ImageCropperView: UIViewControllerRepresentable {
         }
         
         func updateParent(_ newParent: ImageCropperView) {
-            self.parent = newParent
-            self.actionBinding = newParent._action
+            parent = newParent
+            actionBinding = newParent._action
         }
     }
     
@@ -193,3 +217,4 @@ public struct ImageCropperView: UIViewControllerRepresentable {
         context.coordinator.handleAction()
     }
 }
+
